@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload File</title>
+</head>
+<body>
+  <h2>Upload File for Approval</h2>
+
+  <input type="file" id="file"><br><br>
+  <input type="email" id="approver1" placeholder="Approver 1 Email"><br>
+  <input type="email" id="approver2" placeholder="Approver 2 Email"><br><br>
+  <button onclick="upload()">Upload</button>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDQK1w4m25GEs3erR0o5Z-V4M5GcmeKyx4",
+      authDomain: "change-slip.firebaseapp.com",
+      projectId: "change-slip",
+      storageBucket: "change-slip.appspot.com",
+      messagingSenderId: "865872159179",
+      appId: "1:865872159179:web:ebadb70171283f6133d64e",
+      measurementId: "G-ZJNH2CJ8NK"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) currentUser = user;
+      else window.location.href = "index.html";
+    });
+
+    window.upload = function () {
+      const fileInput = document.getElementById("file");
+      const file = fileInput.files[0];
+
+      const approvers = [
+        document.getElementById("approver1").value,
+        document.getElementById("approver2").value
+      ];
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = e.target.result.split(',')[1]; // base64
+        fetch("YOUR_GOOGLE_SCRIPT_URL", {
+          method: "POST",
+          body: JSON.stringify({
+            name: file.name,
+            data: data
+          })
+        })
+          .then(res => res.text())
+          .then(link => {
+            alert("File uploaded: " + link);
+
+            // Save file info to Firestore
+            addDoc(collection(db, "uploads"), {
+              uploader: currentUser.email,
+              fileUrl: link,
+              approvers: approvers,
+              currentApproverIndex: 0,
+              status: "Pending"
+            });
+          });
+      };
+      reader.readAsDataURL(file);
+    };
+  </script>
+</body>
+</html>
